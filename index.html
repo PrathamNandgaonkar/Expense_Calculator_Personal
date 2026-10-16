@@ -28,6 +28,7 @@
       </nav>
       <div class="sidebar-foot">
         <button class="btn btn-amber btn-block" data-action="open-import"><span class="ico" data-icon="upload"></span>Import statement</button>
+        <div id="account"></div>
         <button class="side-link" data-action="open-settings"><span class="ico" data-icon="settings"></span>Backup & settings</button>
         <button class="side-link" data-action="open-help"><span class="ico" data-icon="keyboard"></span>Shortcuts <kbd>?</kbd></button>
         <div class="privacy"><span class="ico" data-icon="lock"></span>Your data never leaves this browser.</div>
@@ -64,6 +65,9 @@
   <input type="file" id="file-input" accept=".csv,text/csv" hidden />
   <input type="file" id="backup-input" accept=".json,application/json" hidden />
 
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/parser.js"></script>
   <script src="js/app.js"></script>
 </body>

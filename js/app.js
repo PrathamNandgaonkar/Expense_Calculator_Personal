@@ -135,19 +135,32 @@
 
   // ================= state =================
   const blank = () => ({ v: 1, me: 'You', transactions: [], people: [], groups: [], splits: {}, payments: [], imports: [], lastPick: [], sample: false });
-  let S = load();
+  const C = window.HisaabCloud || { enabled: false, configured: false };
+  const MODE_KEY = 'hisaab.mode';       // 'local' when the user chose to skip signing in
+  const LAST_USER_KEY = 'hisaab.lastUser';
+  // Signed-in users get their own cache key so two Google accounts on one browser never mix.
+  let storageKey = KEY;
+  let S = blank();
   let ui = Object.assign({ view: 'dashboard', period: 'all', q: '', type: 'all', status: 'all', cat: 'all', month: 'all', sort: 'new', limit: 150 }, loadUI());
   ui.selected = new Set();
   let modal = null;
   let lastImportText = '';
 
-  function load() {
-    try { const raw = localStorage.getItem(KEY); if (raw) return Object.assign(blank(), JSON.parse(raw)); } catch (e) { /* storage blocked */ }
+  function readKey(k) {
+    try { const raw = localStorage.getItem(k); if (raw) return Object.assign(blank(), JSON.parse(raw)); } catch (e) { /* storage blocked */ }
     return blank();
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save — browser storage is full or blocked', { err: true }); }
+  function load() { return readKey(storageKey); }
+  function saveLocal() {
+    try { localStorage.setItem(storageKey, JSON.stringify(S)); } catch (e) { toast('Could not save — browser storage is full or blocked', { err: true }); }
   }
+  function save() {
+    S.savedAt = Date.now();
+    saveLocal();
+    if (C.user) C.schedulePush(S);
+  }
+  const hasData = s => !!(s && (s.transactions.length || s.people.length));
+  const localMode = () => { try { return localStorage.getItem(MODE_KEY) === 'local'; } catch (e) { return false; } };
   function loadUI() { try { return JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch (e) { return {}; } }
   function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({ view: ui.view, period: ui.period })); } catch (e) { /* ignore */ } }
 
@@ -1041,12 +1054,16 @@
 
   // ---------- settings ----------
   function modalSettings() {
-    const body = `
+    const u = C.user;
+    const account = !C.configured ? '' : u
+      ? `<div class="field"><span class="label">Account</span><div class="group-row"><span class="avatar" style="background:var(--amber);color:var(--ocean-900)">${esc(initials(u.user_metadata?.full_name || u.email))}</span><div style="flex:1;min-width:0"><b>${esc(u.user_metadata?.full_name || u.email)}</b><div class="person-meta">${esc(u.email)} · synced across your devices</div></div><button class="btn btn-sm btn-ghost" data-action="sign-out">${icon('out', 'ico-sm')}Sign out</button></div></div>`
+      : `<div class="field"><span class="label">Account</span><div class="group-row"><span class="feed-ico tint-amber">${icon('lock')}</span><div style="flex:1"><b>Not signed in</b><div class="person-meta">Data is saved in this browser only</div></div><button class="btn btn-sm btn-google" data-action="google-login">${GOOGLE_G}Sign in with Google</button></div></div>`;
+    const body = `${account}
       <div class="field"><label for="me-name">Your name</label><div class="inline-add"><input id="me-name" class="input" value="${esc(S.me)}" /><button class="btn btn-ghost" data-action="me-save">Save</button></div><div class="person-meta">Used in reminder messages and split lists.</div></div>
       <div class="field"><span class="label">Backup</span>
         <div class="row"><button class="btn btn-ghost" data-action="backup">${icon('download', 'ico-sm')}Download backup</button><button class="btn btn-ghost" data-action="restore">${icon('upload', 'ico-sm')}Restore backup</button></div>
         <button class="btn btn-ghost" data-action="export-csv">${icon('file', 'ico-sm')}Export transactions with splits (CSV)</button>
-        <div class="person-meta">Data is stored only in this browser. Download a backup before clearing browser data or switching computers.</div></div>
+        <div class="person-meta">${u ? 'Your data is synced to your account. A backup file is an extra copy you control.' : 'Data is stored only in this browser. Download a backup before clearing browser data or switching computers.'}</div></div>
       ${S.imports.length ? `<div class="field"><span class="label">Imports</span>${S.imports.map(im => `<div class="group-row"><span class="feed-ico tint-plum">${icon('file')}</span><div style="flex:1;min-width:0"><b style="word-break:break-all">${esc(im.name)}</b><div class="person-meta">${im.count} transactions · ${new Date(im.at).toLocaleDateString('en-IN')}</div></div><button class="icon-btn" data-action="remove-import" data-id="${im.id}" title="Remove these transactions">${icon('trash')}</button></div>`).join('')}</div>` : ''}
       <div class="field"><span class="label">Danger zone</span><button class="btn btn-danger-text" style="justify-content:flex-start" data-action="reset-all">${icon('trash', 'ico-sm')}Erase all data</button></div>`;
     return shell({ title: 'Backup & settings', body });
@@ -1310,6 +1327,9 @@
       case 'delete-group': commit('Group deleted', s => { s.groups = s.groups.filter(g => g.id !== id); }); break;
 
       // settings
+      case 'google-login': googleLogin(el); break;
+      case 'use-local': useLocal(); break;
+      case 'sign-out': closeModal(); signOutFlow(); break;
       case 'me-save': { const v = $('#me-name').value.trim() || 'You'; commit('Name saved', s => { s.me = v; }, { undo: false }); break; }
       case 'backup': download(`hisaab-backup-${todayStr()}.json`, JSON.stringify(S, null, 2), 'application/json'); toast('Backup downloaded'); break;
       case 'restore': $('#backup-input').click(); break;
@@ -1325,7 +1345,7 @@
         }));
         break;
       }
-      case 'reset-all': confirmDialog({ title: 'Erase everything?', body: 'All transactions, people, splits and payments in this browser will be deleted. Download a backup first if you might need it.', ok: 'Erase all', danger: true }, () => { commit('All data erased', s => Object.assign(s, blank())); setView('dashboard'); }); break;
+      case 'reset-all': confirmDialog({ title: 'Erase everything?', body: C.user ? 'All transactions, people, splits and payments will be deleted from your account on every device. Download a backup first if you might need it.' : 'All transactions, people, splits and payments in this browser will be deleted. Download a backup first if you might need it.', ok: 'Erase all', danger: true }, () => { commit('All data erased', s => Object.assign(s, blank())); setView('dashboard'); }); break;
     }
   });
 
@@ -1435,10 +1455,151 @@
   window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) overlay.hidden = true; });
   window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; overlay.hidden = true; const f = e.dataTransfer?.files?.[0]; if (f) handleFile(f); });
 
+  // ================= accounts & sync =================
+  const GOOGLE_G = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
+  function showAuthScreen(msg) {
+    hideAuthScreen();
+    const el = document.createElement('div');
+    el.id = 'auth-screen';
+    el.className = 'auth-screen';
+    el.innerHTML = `
+      <div class="auth-card">
+        <div class="brand" style="padding:0"><div class="brand-mark">₹</div><div><div class="brand-name" style="color:var(--ink)">Hisaab</div><div class="brand-tag" style="color:var(--muted)">split · track · settle</div></div></div>
+        <h1>Your hisaab, <em>on every device.</em></h1>
+        <p>Sign in to keep your expenses, splits and who-owes-you safely in your private account — open it on your laptop or phone and pick up where you left off.</p>
+        ${msg ? `<div class="split-status bad" style="margin-bottom:14px">${icon('info')}<span style="flex:1;margin-left:8px">${esc(msg)}</span></div>` : ''}
+        <button class="btn btn-google btn-block" data-action="google-login">${GOOGLE_G}Continue with Google</button>
+        <div class="auth-or"><span>or</span></div>
+        <button class="btn btn-ghost btn-block" data-action="use-local">${icon('lock', 'ico-sm')}Use on this device only</button>
+        <ul class="auth-points">
+          <li>${icon('check', 'ico-sm')}Only you can see your data — it's locked to your Google account</li>
+          <li>${icon('check', 'ico-sm')}Works offline and syncs when you're back online</li>
+          <li>${icon('check', 'ico-sm')}We never see your Google password</li>
+        </ul>
+      </div>
+      <div class="auth-art" aria-hidden="true">
+        <div class="float-card"><span class="avatar" style="background:#E8573F">RK</span><div><small>Rohan owes you</small><b>₹2,450</b></div></div>
+        <div class="float-card"><span class="avatar" style="background:#7B4B94">AS</span><div><small>Weekend trip · split 3 ways</small><b>₹3,266 each</b></div></div>
+        <div class="float-card"><span class="avatar" style="background:#00948A">MJ</span><div><small>Synced from your phone</small><b>just now ✓</b></div></div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  function hideAuthScreen() { $('#auth-screen')?.remove(); }
+
+  async function googleLogin(btn) {
+    if (!C.enabled) { toast(C.configured ? 'Sign-in needs an internet connection' : 'Cloud sync isn\'t set up yet — see SETUP.md', { err: true }); return; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `${GOOGLE_G}Opening Google…`; }
+    try { localStorage.removeItem(MODE_KEY); } catch (e) { /* ignore */ }
+    const { error } = await C.signInWithGoogle();
+    if (error) { showAuthScreen(error.message); }
+  }
+
+  function useLocal() {
+    try { localStorage.setItem(MODE_KEY, 'local'); } catch (e) { /* ignore */ }
+    hideAuthScreen();
+    storageKey = KEY; S = load(); render();
+  }
+
+  let activeUserId = null;
+  async function startSession(user) {
+    if (activeUserId === user.id) return;   // getSession and the SIGNED_IN event can both arrive
+    activeUserId = user.id;
+    hideAuthScreen();
+    if (/[?&](code|error)=/.test(location.search)) history.replaceState(null, '', location.pathname);
+    storageKey = KEY + ':' + user.id;
+    try { localStorage.setItem(LAST_USER_KEY, user.id); } catch (e) { /* ignore */ }
+    S = load();
+    render();
+    renderAccount();
+    try {
+      const row = await C.fetchState();
+      const remote = row && row.data && Object.keys(row.data).length ? Object.assign(blank(), row.data) : null;
+      if (remote) {
+        if ((S.savedAt || 0) > (remote.savedAt || 0)) C.schedulePush(S);   // offline edits made on this device
+        else { S = remote; saveLocal(); render(); }
+        renderAccount('synced');
+      } else {
+        const legacy = readKey(KEY);
+        if (!hasData(S) && hasData(legacy)) {
+          confirmDialog({ title: 'Move your data into your account?', body: `This browser already has <b>${legacy.transactions.length} transactions</b> and <b>${legacy.people.length} people</b> saved from before you signed in. Move them into your account so they sync everywhere?`, ok: 'Yes, move them' }, () => {
+            S = legacy; save(); render(); toast('Moved into your account — now syncing');
+          });
+        } else if (hasData(S)) save();
+        renderAccount('synced');
+      }
+    } catch (e) {
+      renderAccount('offline');
+      toast('Couldn\'t reach your account — showing the copy saved on this device', { err: true });
+    }
+    if (S.transactions.length && ui.view === 'dashboard') countUp();
+  }
+
+  function signOutFlow() {
+    confirmDialog({ title: 'Sign out?', body: 'Your data stays safe in your account. This browser\'s copy is removed, so the next person using it can\'t see your expenses.', ok: 'Sign out' }, async () => {
+      const userKey = storageKey;   // the SIGNED_OUT handler resets storageKey, so capture it first
+      activeUserId = null;
+      try { await C.signOut(); } catch (e) { /* ignore */ }
+      try { if (userKey !== KEY) localStorage.removeItem(userKey); localStorage.removeItem(LAST_USER_KEY); } catch (e) { /* ignore */ }
+      storageKey = KEY; S = blank(); ui.view = 'dashboard'; render(); renderAccount();
+      showAuthScreen();
+    });
+  }
+
+  const SYNC_LABEL = { synced: ['Synced', 'ok'], saving: ['Saving…', 'busy'], offline: ['Offline — will sync later', 'warn'], error: ['Sync failed — retrying', 'bad'], idle: ['Connecting…', 'busy'] };
+  function renderAccount(st) {
+    const box = $('#account');
+    if (!box) return;
+    const u = C.user;
+    if (u) {
+      const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email;
+      const [label, cls] = SYNC_LABEL[st || C.status] || SYNC_LABEL.idle;
+      box.innerHTML = `<div class="account-row"><span class="avatar sm" style="background:var(--amber);color:var(--ocean-900)">${esc(initials(name))}</span>
+        <div style="min-width:0;flex:1"><div class="account-name">${esc(name)}</div><div class="sync-state ${cls}"><i></i>${label}</div></div>
+        <button class="icon-btn account-out" data-action="sign-out" title="Sign out">${icon('out', 'ico-sm')}</button></div>`;
+      $('.privacy').innerHTML = `${icon('lock')}Private to your Google account.`;
+    } else if (C.configured) {
+      box.innerHTML = `<button class="side-link" data-action="google-login"><span class="ico" style="background:#fff;border-radius:50%;padding:2px">${GOOGLE_G}</span>Sign in to sync devices</button>`;
+      $('.privacy').innerHTML = `${icon('lock')}Saved in this browser only.`;
+    } else {
+      box.innerHTML = '';
+    }
+  }
+  if (C.onStatus) C.onStatus(st => renderAccount(st));
+
+  // Pull changes made on another device when you come back to this tab.
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible' || !C.user || modal) return;
+    try {
+      const row = await C.checkRemote();
+      if (row && row.data) { S = Object.assign(blank(), row.data); saveLocal(); render(); toast('Updated with changes from your other device'); }
+    } catch (e) { /* stay on local copy */ }
+  });
+
   // ================= boot =================
   $$('[data-icon]').forEach(el => { el.innerHTML = svg(el.dataset.icon); });
-  render();
-  if (S.transactions.length && ui.view === 'dashboard') countUp();
+  (async function boot() {
+    if (!C.configured) { S = load(); render(); if (S.transactions.length && ui.view === 'dashboard') countUp(); return; }
+    if (!C.enabled) {
+      // Sync library didn't load (offline) — fall back to this device's copy of the last account.
+      let last = null; try { last = localStorage.getItem(LAST_USER_KEY); } catch (e) { /* ignore */ }
+      storageKey = last ? KEY + ':' + last : KEY;
+      S = load(); render(); renderAccount();
+      toast('You\'re offline — showing the copy saved on this device', { err: true });
+      return;
+    }
+    C.onAuthChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) startSession(session.user);
+      if (event === 'SIGNED_OUT' && activeUserId) { activeUserId = null; storageKey = KEY; S = blank(); render(); renderAccount(); showAuthScreen(); }
+    });
+    let user = null, err = null;
+    try { user = await C.getUser(); } catch (e) { err = e; }
+    if (user) return startSession(user);
+    if (localMode()) { S = load(); render(); renderAccount(); if (S.transactions.length && ui.view === 'dashboard') countUp(); return; }
+    render(); renderAccount();
+    const q = new URLSearchParams(location.search);
+    showAuthScreen(q.get('error_description') || (err ? 'Sign-in failed — please try again.' : ''));
+  })();
   function countUp() {
     const el = $('[data-countup]'); if (!el) return;
     const target = Number(el.dataset.countup) / 100; const t0 = performance.now();

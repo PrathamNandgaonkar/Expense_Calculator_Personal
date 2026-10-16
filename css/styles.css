@@ -528,11 +528,51 @@ details.disclose[open] summary { margin-bottom: 12px; }
 .section-title { font-size: 13px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); margin: 26px 0 12px; display: flex; align-items: center; gap: 10px; }
 .section-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
+
+/* ---------- sign-in ---------- */
+.auth-screen {
+  position: fixed; inset: 0; z-index: 300; overflow: auto; display: grid; grid-template-columns: minmax(0, 520px) 1fr; align-items: center;
+  gap: 40px; padding: 40px 6vw;
+  background:
+    radial-gradient(700px 500px at 100% 0%, rgba(233, 162, 59, .45), transparent 60%),
+    radial-gradient(700px 600px at 0% 100%, rgba(0, 148, 138, .55), transparent 60%),
+    linear-gradient(130deg, var(--ocean-950), var(--ocean-700));
+  animation: fadeIn .3s;
+}
+.auth-card { background: var(--sand-0); border-radius: 28px; padding: 36px 34px; box-shadow: var(--shadow-2); animation: pop .35s var(--ease); }
+.auth-card h1 { font-size: 34px; line-height: 1.1; letter-spacing: -.03em; margin: 26px 0 10px; }
+.auth-card h1 em { font-style: normal; color: var(--teal-600); }
+.auth-card p { color: var(--ink-2); margin: 0 0 24px; font-size: 15px; }
+.btn-google { background: #fff; color: #1f1f1f; border: 1px solid #DADCE0; height: 50px; font-size: 15px; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.btn-google:hover { background: #F8FAFF; border-color: #C6CBD2; }
+.btn-google.btn-sm { height: 32px; font-size: 13px; gap: 8px; }
+.btn-google.btn-sm svg { width: 16px; height: 16px; }
+.auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin: 14px 0; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.auth-points { list-style: none; padding: 0; margin: 24px 0 0; display: flex; flex-direction: column; gap: 9px; font-size: 13px; color: var(--ink-2); }
+.auth-points li { display: flex; gap: 9px; align-items: flex-start; }
+.auth-points .ico { color: var(--teal); margin-top: 1px; }
+.auth-art { display: flex; flex-direction: column; gap: 16px; align-items: center; color: #fff; }
+.auth-art .float-card { min-width: 280px; }
+
+.account-row { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .06); margin-bottom: 4px; }
+.account-name { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sync-state { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #A9C7C4; }
+.sync-state i { width: 7px; height: 7px; border-radius: 50%; background: #6FD3C7; }
+.sync-state.busy i { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+.sync-state.warn i { background: var(--amber); }
+.sync-state.bad i { background: #FF9C8A; }
+@keyframes pulse { 50% { opacity: .3; } }
+.account-out { color: #A9C7C4; }
+.account-out:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .floaty { display: none; }
+  .auth-screen { grid-template-columns: 1fr; justify-items: center; }
+  .auth-art { display: none; }
 }
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
@@ -540,7 +580,10 @@ details.disclose[open] summary { margin-bottom: 12px; }
     position: fixed; bottom: 0; top: auto; left: 0; right: 0; height: auto; z-index: 30; padding: 8px 10px;
     flex-direction: row; border-radius: 18px 18px 0 0; gap: 0;
   }
-  .brand, .sidebar-foot .side-link, .privacy { display: none; }
+  .brand, .sidebar-foot .side-link, .privacy, #account { display: none; }
+  .auth-screen { padding: 20px 14px; }
+  .auth-card { padding: 28px 22px; }
+  .auth-card h1 { font-size: 28px; }
   .nav { flex-direction: row; flex: 1; justify-content: space-around; }
   .nav-item { flex-direction: column; gap: 3px; font-size: 11px; padding: 6px 10px; }
   .nav-item.active { box-shadow: inset 0 -3px 0 var(--amber); }

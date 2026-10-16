@@ -31,13 +31,21 @@ Re-importing an overlapping period is safe: transactions you already have are sk
 - Undo on every change, keyboard shortcuts (press `?`), works on mobile
 - Backup/restore (JSON) and CSV export
 
+## Google sign-in & sync across devices
+
+Sign in with Google and your ledger syncs between laptop and phone. It's stored in your own Supabase database, and row-level security keeps each account's data private. One-time setup: see **[SETUP.md](SETUP.md)**.
+
 ## Privacy
 
-Everything is stored in your browser's `localStorage`. Nothing is uploaded. Clearing browser data erases it, so use **Backup & settings → Download backup** now and then.
+- **Signed in:** data is stored in your Supabase project under your Google account, and only that account can read it. The browser also keeps a copy so the app opens instantly and works offline.
+- **"Use on this device only"** (or before sync is set up): everything stays in the browser's `localStorage` and nothing is uploaded. Clearing browser data erases it, so use **Backup & settings → Download backup** now and then.
 
 ## Files
 
 - `index.html`: app shell
 - `css/styles.css`: "Sand & Ocean" theme
 - `js/parser.js`: ICICI CSV parser (header detection, dates, amounts, merchant/category extraction)
-- `js/app.js`: state, split engine, views, dialogs
+- `js/app.js`: state, split engine, views, dialogs, sign-in screen
+- `js/cloud.js`: Supabase sync + Google sign-in
+- `js/config.js`: your Supabase URL + anon key
+- `supabase/schema.sql`: database table + security rules
