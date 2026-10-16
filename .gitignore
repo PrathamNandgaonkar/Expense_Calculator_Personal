@@ -1,0 +1,9 @@
+.claude/
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+# real statements & backups should never be committed
+*.csv
+!sample/*.csv
+hisaab-backup-*.json

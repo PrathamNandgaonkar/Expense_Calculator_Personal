@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hisaab — Split & Track</title>
+  <meta name="description" content="Import your ICICI statement, split expenses with friends and see who owes you what. Everything stays on your device." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230E3B43'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23E9A23B' font-family='Arial' font-weight='700'%3E%E2%82%B9%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">₹</div>
+        <div>
+          <div class="brand-name">Hisaab</div>
+          <div class="brand-tag">split · track · settle</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <button class="nav-item" data-action="nav" data-view="dashboard"><span class="ico" data-icon="home"></span><span>Dashboard</span></button>
+        <button class="nav-item" data-action="nav" data-view="transactions"><span class="ico" data-icon="list"></span><span>Transactions</span><span class="nav-badge" id="badge-unsplit" hidden></span></button>
+        <button class="nav-item" data-action="nav" data-view="people"><span class="ico" data-icon="users"></span><span>People</span><span class="nav-badge alt" id="badge-people" hidden></span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <button class="btn btn-amber btn-block" data-action="open-import"><span class="ico" data-icon="upload"></span>Import statement</button>
+        <button class="side-link" data-action="open-settings"><span class="ico" data-icon="settings"></span>Backup & settings</button>
+        <button class="side-link" data-action="open-help"><span class="ico" data-icon="keyboard"></span>Shortcuts <kbd>?</kbd></button>
+        <div class="privacy"><span class="ico" data-icon="lock"></span>Your data never leaves this browser.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="page-title" id="page-title">Dashboard</h1>
+          <div class="page-sub" id="page-sub"></div>
+        </div>
+        <div class="topbar-actions">
+          <label class="search">
+            <span class="ico" data-icon="search"></span>
+            <input id="global-search" type="search" placeholder="Search transactions…" autocomplete="off" />
+            <kbd>/</kbd>
+          </label>
+          <button class="btn btn-ghost" data-action="open-payment"><span class="ico" data-icon="hand"></span><span class="hide-sm">Record payment</span></button>
+          <button class="btn btn-primary" data-action="open-add-expense"><span class="ico" data-icon="plus"></span><span class="hide-sm">Add expense</span></button>
+        </div>
+      </header>
+      <section id="view" class="view" tabindex="-1"></section>
+    </main>
+  </div>
+
+  <div id="bulkbar" class="bulkbar" hidden></div>
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="drop-overlay" class="drop-overlay" hidden>
+    <div class="drop-card"><span class="ico ico-xl" data-icon="upload"></span><div>Drop your ICICI statement CSV</div><small>We'll read it right here in your browser</small></div>
+  </div>
+  <input type="file" id="file-input" accept=".csv,text/csv" hidden />
+  <input type="file" id="backup-input" accept=".json,application/json" hidden />
+
+  <script src="js/parser.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
