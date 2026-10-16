@@ -1065,6 +1065,7 @@
         <button class="btn btn-ghost" data-action="export-csv">${icon('file', 'ico-sm')}Export transactions with splits (CSV)</button>
         <div class="person-meta">${u ? 'Your data is synced to your account. A backup file is an extra copy you control.' : 'Data is stored only in this browser. Download a backup before clearing browser data or switching computers.'}</div></div>
       ${S.imports.length ? `<div class="field"><span class="label">Imports</span>${S.imports.map(im => `<div class="group-row"><span class="feed-ico tint-plum">${icon('file')}</span><div style="flex:1;min-width:0"><b style="word-break:break-all">${esc(im.name)}</b><div class="person-meta">${im.count} transactions · ${new Date(im.at).toLocaleDateString('en-IN')}</div></div><button class="icon-btn" data-action="remove-import" data-id="${im.id}" title="Remove these transactions">${icon('trash')}</button></div>`).join('')}</div>` : ''}
+      <div class="person-meta"><a class="link" href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
       <div class="field"><span class="label">Danger zone</span><button class="btn btn-danger-text" style="justify-content:flex-start" data-action="reset-all">${icon('trash', 'ico-sm')}Erase all data</button></div>`;
     return shell({ title: 'Backup & settings', body });
   }
@@ -1477,6 +1478,7 @@
           <li>${icon('check', 'ico-sm')}Works offline and syncs when you're back online</li>
           <li>${icon('check', 'ico-sm')}We never see your Google password</li>
         </ul>
+        <div class="auth-legal">By continuing you agree to our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
       </div>
       <div class="auth-art" aria-hidden="true">
         <div class="float-card"><span class="avatar" style="background:#E8573F">RK</span><div><small>Rohan owes you</small><b>₹2,450</b></div></div>
