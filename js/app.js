@@ -1514,7 +1514,13 @@
     S = load();
     render();
     renderAccount();
+    await loadFromCloud(0);
+    if (S.transactions.length && ui.view === 'dashboard') countUp();
+  }
+
+  async function loadFromCloud(attempt) {
     try {
+      if (!C.user) await C.getUser();
       const row = await C.fetchState();
       const remote = row && row.data && Object.keys(row.data).length ? Object.assign(blank(), row.data) : null;
       if (remote) {
@@ -1531,10 +1537,11 @@
         renderAccount('synced');
       }
     } catch (e) {
+      console.error('Hisaab: loading account failed', e);
+      if (attempt < 2) { renderAccount('idle'); await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); return loadFromCloud(attempt + 1); }
       renderAccount('offline');
-      toast('Couldn\'t reach your account — showing the copy saved on this device', { err: true });
+      toast('Couldn\'t reach your account — showing the copy saved on this device', { err: true, action: { label: 'Retry', fn: () => loadFromCloud(0) } });
     }
-    if (S.transactions.length && ui.view === 'dashboard') countUp();
   }
 
   function signOutFlow() {

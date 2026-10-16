@@ -21,6 +21,8 @@
     client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
       auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
+    // Registered before the app's listener, so `user` is always current when the app reacts to an auth event.
+    client.auth.onAuthStateChange((event, session) => { user = session ? session.user : null; });
   }
 
   function setStatus(s) { status = s; listeners.forEach(f => { try { f(s); } catch (e) { /* ignore */ } }); }
@@ -103,7 +105,9 @@
     get user() { return user; },
     get status() { return status; },
     onStatus: f => listeners.push(f),
-    onAuthChange: cb => client && client.auth.onAuthStateChange((event, session) => cb(event, session)),
+    // Supabase holds an internal lock while auth callbacks run; calling the database from inside one can hang.
+    // So the app's callback is deferred to the next tick.
+    onAuthChange: cb => client && client.auth.onAuthStateChange((event, session) => { setTimeout(() => cb(event, session), 0); }),
     getUser, signInWithGoogle, signOut, fetchState, schedulePush, flush, checkRemote,
   };
 })();
